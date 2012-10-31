@@ -28,7 +28,6 @@
   ([]
      (read-occurrences local-data)) 
   ([path]
-     (prn path)
      (let [src (hfs-textline path)]
        (<- [?scientificname ?occurrenceid ?latitude ?longitude]
            (src ?line)
