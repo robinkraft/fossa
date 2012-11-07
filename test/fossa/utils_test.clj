@@ -58,3 +58,28 @@
     (extract-field tuples test-lats test-lons 1) => [[2 2] [2] [2 2]]
     (extract-field tuples test-lats test-lons 2) => [[3 3] [3] [3 3]]))
 
+(fact
+  "Test parse-hemisphere"
+  (parse-hemisphere "N") => {0 "winter" 1 "spring" 2 "summer" 3 "fall"}
+  (parse-hemisphere "S") => {0 "summer" 1 "fall" 2 "winter" 3 "spring"})
+
+(fact
+  "Test get-quarter"
+  (get-quarter 1) => 0
+  (get-quarter 3) => 0
+  (get-quarter 4) => 1
+  (get-quarter 6) => 1
+  (get-quarter 7) => 2)
+
+(fact
+  "Test get-season"
+  (get-season 1 1) => "N winter"
+  (get-season -1 1) => "S summer"
+  (get-season 1 3) => "N spring"
+  (get-season -1 3) => "S fall"
+  (get-season 1 4) => "N spring"
+  (get-season -1 4) => "S fall"
+  (get-season 1 7) => "N summer"
+  (get-season -1 7) => "S winter"
+  (get-season 1 10) => "N fall"
+  (get-season -1 10) => "S spring")
