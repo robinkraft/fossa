@@ -140,3 +140,50 @@
         season (get (parse-hemisphere hemisphere)
                     (get-season-idx month))]
     (format "%s %s" hemisphere season)))
+
+(defn surround-str
+  "Surround a supplied string with supplied string.
+
+   Usage:
+     (surround-str \"yomama\" \"'\")
+     ;=> \"'yomamma'\""
+  [s surround-with]
+  (format "%s%s%s" surround-with s surround-with))
+
+(defn concat-results
+  "Concatenate a collection of strings, with an optional separator."
+  [results-vec & [sep]]
+  (apply str (interpose sep results-vec)))
+
+(defn prep-vals
+  "Format collection for insert, including adding quotes and {}.
+
+   Usage:
+     (u/prep-vals [[\"1223445\" \"2302043\"] [\"2132424\"]])
+     ;=> \"'{\"1223445,2302043\", \"2132424\"}'\"
+
+     Looks nicer if you print it with `println`"
+  [coll]
+  (->> coll
+       (map #(concat-results % ","))
+       (map #(surround-str % "\""))
+       (#(concat-results % ", "))
+       (format "{%s}")
+       (#(surround-str % "'"))))
+
+(defn mk-value-str
+  "Given various fields, make comma-separated value string for insert
+   statement."
+  [name occ-ids precision year month season]
+  (-> [(surround-str name "'") (prep-vals occ-ids)
+       (prep-vals precision) (prep-vals year)
+       (prep-vals month)]
+      (concat-results ", ")))
+
+(defn mk-insert-stmt
+  "Create final insert statement given a value string and multi-point
+  string"
+  [value-str multi-point]
+  (let [s (str "INSERT INTO gbif_points (name, occids, precision, year, month,"
+               " season, the_geom_multipoint) values (%s) ST_GeomFromText('%s', 4326)")]
+    (format s value-str multi-point)))

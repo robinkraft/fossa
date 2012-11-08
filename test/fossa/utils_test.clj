@@ -89,3 +89,43 @@
   (get-season 1 10) => "N fall"
   (get-season -1 10) => "S spring")
 
+(facts
+  "Test surround-str"
+  (surround-str "yo" "'") => "'yo'"
+  (surround-str "Acidobacteria" "!!!!") => "!!!!Acidobacteria!!!!"
+  (surround-str "ada" "r") => "radar")
+
+(facts
+  "Test concat-results"
+  (concat-results ["2008" "2009"] ",") => "2008,2009"
+  (concat-results ["3" "5"] ",") => "3,5"
+  (concat-results ["" ""] ",") => ",")
+
+(fact
+  "Test prep-vals"
+  (prep-vals [["2008" "2009"] ["2009"]]) => "'{\"2008,2009\", \"2009\"}'")
+
+(fact
+  "Test mk-value-str. Formatting of result may look funky here, but if
+   you print it with println it's ok...."
+  (mk-value-str "ants"
+                [[1234 3566] [6460]]
+                [["" ""] [""]]
+                [["2008" "2009"] ["2007"]]
+                [["2" "3"] ["4"]]
+                [["N winter" "N spring"] ["N spring"]])
+  => (str "'ants', '{\"1234,3566\", \"6460\"}', '{\",\", \"\"}', "
+          "'{\"2008,2009\", \"2007\"}', '{\"2,3\", \"4\"}'"))
+
+(fact
+  "Test mk-insert-stmt"
+  (let [mp "MULTIPOINT (4 1, 5 2)"]
+    (mk-insert-stmt
+     (mk-value-str "Acidobacteria" [["1223445" "2302043"] ["2132424"]]
+                   [[" " " "] [" "]] [["2007" "2008"] ["2009"]]
+                   [["6" "7"] ["12"]] [["S spring" "S fall"] ["N fall"]]) mp))
+  => (str "INSERT INTO gbif_points (name, occids, precision, year, month, "
+          "season, the_geom_multipoint) values ('Acidobacteria', "
+          "'{\"1223445,2302043\", \"2132424\"}', '{\" , \", \" \"}', "
+          "'{\"2007,2008\", \"2009\"}', '{\"6,7\", \"12\"}') "
+          "ST_GeomFromText('MULTIPOINT (4 1, 5 2)', 4326)"))

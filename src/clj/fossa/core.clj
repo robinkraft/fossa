@@ -22,7 +22,7 @@
 (defn read-occurrences
   "Returns a Cascalog generator of occurence fields for supplied data path."
   ([]
-     (read-occurrences local-data)) 
+     (read-occurrences local-data))
   ([path]
      (let [src (hfs-textline path)]
        (<- [?scientificname ?lat-f ?lon-f ?occurrenceid ?prec ?year ?month]
@@ -54,10 +54,11 @@
 (defn parse-occurrence-data
   "Shred some GBIF."
   [& {:keys [path] :or {path local-data}}]
-  (let [digits 7
-        occ-src (read-occurrences path)]
-  (<- [?sci-name ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons]
+  (let [occ-src (read-occurrences path)]
+  (<- [?sci-name ?stmt]
       (occ-src ?sci-name ?lat ?lon ?occ-id ?prec ?year ?month)
       (u/get-season ?lat ?month :> ?season)
       (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
-                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons))))
+                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons)
+      (u/mk-value-str ?sci-name ?occ-ids ?precs ?yrs ?mos ?seasons :> ?val-str)
+      (u/mk-insert-stmt ?val-str ?multipoint :> ?stmt))))
