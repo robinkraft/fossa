@@ -36,12 +36,12 @@
    observation. Observations need not be unique - they are aggregated
    into vectors and ordered the same as the multi-point."
   [tuples]
-  (let [lats     (u/extract 0 tuples)
-        lons     (u/extract 1 tuples)
-        occ      (u/extract-field tuples lats lons 2)
-        prec     (u/extract-field tuples lats lons 3)
-        yr       (u/extract-field tuples lats lons 4)
-        mo       (u/extract-field tuples lats lons 5)
+  (let [lats (u/extract 0 tuples)
+        lons (u/extract 1 tuples)
+        occ (u/extract-field tuples lats lons 2)
+        prec (u/extract-field tuples lats lons 3)
+        yr (u/extract-field tuples lats lons 4)
+        mo (u/extract-field tuples lats lons 5)
         multi-pt (u/parse-for-wkt lats lons)]
     [[multi-pt (vec occ) (vec prec) (vec yr) (vec mo)]]))
 
