@@ -25,10 +25,15 @@
      (read-occurrences local-data)) 
   ([path]
      (let [src (hfs-textline path)]
-       (<- [?scientificname ?occurrenceid ?latitude ?longitude ?prec ?year ?month]
+       (<- [?scientificname ?lat-f ?lon-f ?occurrenceid ?prec ?year ?month]
            (src ?line)
+           (u/split-line ?line :>> occ-fields)
            (u/cleanup-slash-N ?coordinateprecision :> ?prec)
-           (u/split-line ?line :>> occ-fields)))))
+           (u/valid-name? ?scientificname)
+           ((c/each #'read-string) ?latitude ?longitude :> ?lat ?lon)
+           (u/latlon-valid? ?lat ?lon)
+           ((c/each #'float) ?lat ?lon :> ?lat-f ?lon-f)
+           (:distinct true)))))
 
 (defbufferop collect-by-latlon
   "Returns WKT MULTIPOINT for each unique latlon, along with
@@ -42,16 +47,16 @@
         prec (u/extract-field tuples lats lons 3)
         yr (u/extract-field tuples lats lons 4)
         mo (u/extract-field tuples lats lons 5)
+        season (u/extract-field tuples lats lons 6)
         multi-pt (u/parse-for-wkt lats lons)]
-    [[multi-pt (vec occ) (vec prec) (vec yr) (vec mo)]]))
+    [[multi-pt (vec occ) (vec prec) (vec yr) (vec mo) (vec season)]]))
 
 (defn parse-occurrence-data
   "Shred some GBIF."
   [& {:keys [path] :or {path local-data}}]
   (let [occ-src (read-occurrences path)]
-  (<- [?scientificname ?multipoint ?occ-ids ?precision ?yr ?mo]
-      (occ-src ?scientificname ?occurrenceid ?latitude ?longitude ?coordinateprecision ?year ?month)
-      (u/valid-name? ?scientificname)
-      ((c/each #'read-string) ?latitude ?longitude :> ?lat ?lon)
-      (u/latlon-valid? ?lat ?lon)
-      (collect-by-latlon ?lat ?lon ?occurrenceid ?coordinateprecision ?year ?month :> ?multipoint ?occ-ids ?precision ?yr ?mo))))
+  (<- [?sci-name ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons]
+      (occ-src ?sci-name ?lat ?lon ?occ-id ?prec ?year ?month)
+      (u/get-season ?lat ?month :> ?season)
+      (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
+                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons))))

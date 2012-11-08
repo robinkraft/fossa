@@ -40,7 +40,7 @@
   "Given a latitude and longitude, returns a WKT-formatted \"(lon lat)\"
    string."
   ([lat lon]
-     (let [coord-str "(%s %s)"]
+     (let [coord-str "%s %s"]
        (format coord-str lon lat)))
   ([[lat lon]]
      (latlon->coord-str lat lon)))
@@ -58,7 +58,7 @@
          (format out-str))))
 
 (defn mk-sorted-map
-  "Make a map a sorted map"
+  "Make a map a sorted map."
   [m]
   (into (sorted-map) m))
 
@@ -74,7 +74,7 @@
                               (map second latlon-split))))
 
 (defn extract
-  "Extract a specific field by index from tuples"
+  "Extract a specific field by index from tuples."
   [field tuples]
   (map #(nth % field) tuples))
 
@@ -105,6 +105,38 @@
       (catch Exception e false))))
 
 (defn cleanup-slash-N
-  "Replace \\N with empty string in precision field"
+  "Replace \\N with empty string in precision field."
   [s]
   (if (= s "\\N") "" s))
+
+(defn parse-hemisphere
+  "Returns a quarter->season map based on the hemisphere."
+  [h]
+  (let [n_seasons {0 "winter" 1 "spring" 2 "summer" 3 "fall"}
+        s_seasons {0 "summer" 1 "fall" 2 "winter" 3 "spring"}]
+    (if (= h "N") n_seasons s_seasons)))
+
+(defn get-season-idx
+  "Returns season index given a month."
+  [month]
+  {:pre [(>= 12 month)]}
+  (let [season-idxs {11 0 12 0 1 0
+                     2 1 3 1 4 1
+                     5 2 6 2 7 2
+                     8 3 9 3 10 3}]
+    (get season-idxs month)))
+
+(defn get-season
+  "Based on the latitude and the month, return a \"hemisphere season\"
+   string.
+
+   Usage:
+     (get-season 40.0 1)
+     ;=> \"N winter\""
+  [lat month]
+  (let [lat (if (string? lat) (read-string lat) lat)
+        month (if (string? month) (read-string month) month)
+        hemisphere (if (pos? lat) "N" "S")
+        season (get (parse-hemisphere hemisphere)
+                    (get-season-idx month))]
+    (format "%s %s" hemisphere season)))
