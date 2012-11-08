@@ -58,7 +58,7 @@
          (format out-str))))
 
 (defn mk-sorted-map
-  "Make a map a sorted map"
+  "Make a map a sorted map."
   [m]
   (into (sorted-map) m))
 
@@ -74,7 +74,7 @@
                               (map second latlon-split))))
 
 (defn extract
-  "Extract a specific field by index from tuples"
+  "Extract a specific field by index from tuples."
   [field tuples]
   (map #(nth % field) tuples))
 
@@ -105,12 +105,12 @@
       (catch Exception e false))))
 
 (defn cleanup-slash-N
-  "Replace \\N with empty string in precision field"
+  "Replace \\N with empty string in precision field."
   [s]
   (if (= s "\\N") "" s))
 
 (defn parse-hemisphere
-  "Returns a quarter->season map based on the hemisphere"
+  "Returns a quarter->season map based on the hemisphere."
   [h]
   (let [n_seasons {0 "winter" 1 "spring" 2 "summer" 3 "fall"}
         s_seasons {0 "summer" 1 "fall" 2 "winter" 3 "spring"}]
