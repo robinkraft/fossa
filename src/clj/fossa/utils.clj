@@ -40,7 +40,7 @@
   "Given a latitude and longitude, returns a WKT-formatted \"(lon lat)\"
    string."
   ([lat lon]
-     (let [coord-str "(%s %s)"]
+     (let [coord-str "%s %s"]
        (format coord-str lon lat)))
   ([[lat lon]]
      (latlon->coord-str lat lon)))

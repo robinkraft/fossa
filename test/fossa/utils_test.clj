@@ -33,12 +33,12 @@
 
 (facts
   "Test latlon->coord-str"
-  (latlon->coord-str 1 2) => "(2 1)"
-  (latlon->coord-str [1 2]) => "(2 1)")
+  (latlon->coord-str 1 2) => "2 1"
+  (latlon->coord-str [1 2]) => "2 1")
 
 (fact
-  (latlons->wkt-multi-point test-lats test-lons) => "MULTIPOINT ((4 1), (5 2), (6 3), (4 1), (6 3))"
-  (latlons->wkt-multi-point [1 2 3] [4 5 6]) => "MULTIPOINT ((4 1), (5 2), (6 3))")
+  (latlons->wkt-multi-point test-lats test-lons) => "MULTIPOINT (4 1, 5 2, 6 3, 4 1, 6 3)"
+  (latlons->wkt-multi-point [1 2 3] [4 5 6]) => "MULTIPOINT (4 1, 5 2, 6 3)")
 
 (fact
   "Test mk-sorted-map"
@@ -46,7 +46,7 @@
 
 (fact
   "Test parse-for-wkt"
-  (parse-for-wkt test-lats test-lons) => "MULTIPOINT ((4 1), (5 2), (6 3))")
+  (parse-for-wkt test-lats test-lons) => "MULTIPOINT (4 1, 5 2, 6 3)")
 
 (facts
   "Test extract-field"
