@@ -58,3 +58,7 @@
     (extract-field tuples test-lats test-lons 1) => [[2 2] [2] [2 2]]
     (extract-field tuples test-lats test-lons 2) => [[3 3] [3] [3 3]]))
 
+(fact
+  "Test cleanup-slash-N - replacing \\N with empty string"
+  (cleanup-slash-N "\\N") => ""
+  (cleanup-slash-N "Really precise") => "Really precise")

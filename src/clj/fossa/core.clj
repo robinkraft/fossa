@@ -25,8 +25,9 @@
      (read-occurrences local-data)) 
   ([path]
      (let [src (hfs-textline path)]
-       (<- [?scientificname ?occurrenceid ?latitude ?longitude ?coordinateprecision ?year ?month]
+       (<- [?scientificname ?occurrenceid ?latitude ?longitude ?prec ?year ?month]
            (src ?line)
+           (u/cleanup-slash-N ?coordinateprecision :> ?prec)
            (u/split-line ?line :>> occ-fields)))))
 
 (defbufferop collect-by-latlon

@@ -103,3 +103,8 @@
              (<= lon lon-max)
              (>= lon lon-min)))
       (catch Exception e false))))
+
+(defn cleanup-slash-N
+  "Replace \\N with empty string in precision field"
+  [s]
+  (if (= s "\\N") "" s))
