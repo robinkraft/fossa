@@ -1,9 +1,11 @@
 (ns fossa.core
   (:use [cascalog.api])
-  (:require [cascalog.ops :as c]))
+  (:require [fossa.utils :as u]
+            [cascalog.ops :as c]
+            [clojure.java.io :as io]))
 
-(def local-data
-  "/mnt/hgfs/Dropbox/code/github/MapofLife/gbifer/resources/gbif/occ.txt")
+;; Slurps resources/occ.txt:
+(def local-data (.getPath (io/resource "occ.txt")))
 
 ;; Ordered column names from the occurrence_20120802.txt.gz dump.
 (def occ-fields ["?occurrenceid" "?taxonid" "?dataresourceid" "?kingdom"
@@ -17,43 +19,43 @@
                  "?latitudeinterpreted" "?longitude" "?longitudeinterpreted"
                  "?coordinateprecision" "?geospatialissue" "?lastindexed"])
 
-(defn split-line
-  "Returns vector of line values by splitting on tab."
-  [line]
-  (vec (.split line "\t")))
-
 (defn read-occurrences
+  "Returns a Cascalog generator of occurence fields for supplied data path."
   ([]
      (read-occurrences local-data)) 
   ([path]
      (let [src (hfs-textline path)]
-       (<- [?scientificname ?occurrenceid ?latitude ?longitude]
+       (<- [?scientificname ?lat ?lon ?occurrenceid ?latitude
+            ?longitude ?coordinateprecision ?year ?month]
            (src ?line)
-           (split-line ?line :>> occ-fields)))))
+           (u/split-line ?line :>> occ-fields)
+           (u/valid-name? ?scientificname)
+           ((c/each #'read-string) ?latitude ?longitude :> ?lat ?lon)
+           (u/latlon-valid? ?lat ?lon)
+           (:distinct true)))))
 
-(defn latlons->wkt-multi-point
-  [lats lons]
-  (let [out-str "MULTIPOINT (%s)"
-        sep ", "]
-    (->> (interleave lats lons)
-         (partition 2 2)
-         (map seq)
-         (interpose sep)
-         (apply str)
-         (format out-str))))
-
-(defbufferop collect-ids-latlons
+(defbufferop collect-by-latlon
+  "Returns WKT MULTIPOINT for each unique latlon, along with
+   occurrence ids, precision, year and month of each
+   observation. Observations need not be unique - they are aggregated
+   into vectors and ordered the same as the multi-point."
   [tuples]
-  (let [occ-ids (vec (map first tuples))
-        lats (map #(nth % 1) tuples)
-        lons (map #(nth % 2) tuples)]
-    [[occ-ids (latlons->wkt-multi-point lats lons)]]))
+  (let [lats     (u/extract 0 tuples)
+        lons     (u/extract 1 tuples)
+        occ      (u/extract-field tuples lats lons 2)
+        prec     (u/extract-field tuples lats lons 3)
+        yr       (u/extract-field tuples lats lons 4)
+        mo       (u/extract-field tuples lats lons 5)
+        season   (u/extract-field tuples lats lons 6)
+        multi-pt (u/parse-for-wkt lats lons)]
+    [[multi-pt (vec occ) (vec prec) (vec yr) (vec mo) (vec season)]]))
 
 (defn parse-occurrence-data
-  [path]
+  "Shred some GBIF."
+  [& {:keys [path] :or {path local-data}}]
   (let [occ-src (read-occurrences path)]
-  (<- [?sci-name ?occ-ids ?multi-point]
-      (occ-src ?sci-name ?occ-id ?lat-str ?lon-str)
-      ((c/each #'read-string) ?lat-str ?lon-str :> ?lat ?lon)
-      (collect-ids-latlons ?occ-id ?lat ?lon :> ?occ-ids ?multi-point))))
-
+  (<- [?sci-name ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons]
+      (occ-src ?sci-name ?lat ?lon ?occ-id ?lat-str ?lon-str ?prec ?year ?month)
+      (u/get-season ?lat ?month :> ?season)
+      (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
+                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons))))
