@@ -25,14 +25,14 @@
      (read-occurrences local-data)) 
   ([path]
      (let [src (hfs-textline path)]
-       (<- [?scientificname ?lat ?lon ?occurrenceid ?latitude
-            ?longitude ?prec ?year ?month]
+       (<- [?scientificname ?lat-f ?lon-f ?occurrenceid ?prec ?year ?month]
            (src ?line)
            (u/split-line ?line :>> occ-fields)
            (u/cleanup-slash-N ?coordinateprecision :> ?prec)
            (u/valid-name? ?scientificname)
            ((c/each #'read-string) ?latitude ?longitude :> ?lat ?lon)
            (u/latlon-valid? ?lat ?lon)
+           ((c/each #'float) ?lat ?lon :> ?lat-f ?lon-f)
            (:distinct true)))))
 
 (defbufferop collect-by-latlon
@@ -56,7 +56,7 @@
   [& {:keys [path] :or {path local-data}}]
   (let [occ-src (read-occurrences path)]
   (<- [?sci-name ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons]
-      (occ-src ?sci-name ?lat ?lon ?occ-id ?lat-str ?lon-str ?prec ?year ?month)
+      (occ-src ?sci-name ?lat ?lon ?occ-id ?prec ?year ?month)
       (u/get-season ?lat ?month :> ?season)
       (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
                          :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons))))
