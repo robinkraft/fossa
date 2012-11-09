@@ -24,15 +24,16 @@
   ([]
      (read-occurrences local-data))
   ([path]
-     (let [src (hfs-textline path)]
-       (<- [?scientificname ?lat-f ?lon-f ?occurrenceid ?prec ?year ?month]
+     (let [digits 7
+           src (hfs-textline path)]
+       (<- [?scientificname ?lat-str ?lon-str ?occurrenceid ?prec ?year ?month]
            (src ?line)
            (u/split-line ?line :>> occ-fields)
            (u/cleanup-slash-N ?coordinateprecision :> ?prec)
            (u/valid-name? ?scientificname)
+           (u/latlon-valid? ?latitude ?longitude)
            ((c/each #'read-string) ?latitude ?longitude :> ?lat ?lon)
-           (u/latlon-valid? ?lat ?lon)
-           ((c/each #'float) ?lat ?lon :> ?lat-f ?lon-f)
+           (u/truncate-latlon ?lat ?lon digits :> ?lat-str ?lon-str)
            (:distinct true)))))
 
 (defbufferop collect-by-latlon

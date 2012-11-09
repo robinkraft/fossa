@@ -48,6 +48,12 @@
   "Test parse-for-wkt"
   (parse-for-wkt test-lats test-lons) => "MULTIPOINT (4 1, 5 2, 6 3)")
 
+(fact
+  "Test extract - pull specific numbered fields out of defbufferop tuples"
+  (let [tuples [[1 2 3]
+             [2 3 4]]]
+    (extract 1 tuples)) => [2 3])
+
 (facts
   "Test extract-field"
   (let [tuples [test-vals
@@ -57,6 +63,24 @@
                 test-vals]]
     (extract-field tuples test-lats test-lons 1) => [[2 2] [2] [2 2]]
     (extract-field tuples test-lats test-lons 2) => [[3 3] [3] [3 3]]))
+
+(facts
+  "Test valid-name?"
+  (valid-name? "ants") => true
+  (valid-name? "") => false
+  (valid-name? nil) => false)
+
+(facts
+  "Test latlon-valid?"
+  (latlon-valid? "1.2" "2.3") => true
+  (latlon-valid? "15d 55m s S" "15d 55m s E") => false
+  (latlon-valid? "ants" "1.2") => false)
+
+(facts
+  "Test truncate-latlon"
+  (truncate-latlon 1.2 1.3 7) => ["1.2000000" "1.3000000"]
+  (truncate-latlon 0 0 7) => ["0.0000000" "0.0000000"]
+  (truncate-latlon 1.234 5.678 2) => ["1.23" "5.68"])
 
 (fact
   "Test cleanup-slash-N - replacing \\N with empty string"

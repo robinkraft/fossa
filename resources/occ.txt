@@ -10,3 +10,4 @@
 244661001	164	335	Bacteria	Acidobacteria	Acidobacteria	\N	\N	\N	Acidobacteria	Bacteria	Acidobacteria	Acidobacteria	\N	\N	\N	Acidobacteria	\N	2008-05-14	2008	5	0	\N	NL	\N	\N	\N	\N	53.49027	53.49027	6.144433	6.144433	\N	0	2012-07-05 00:22:36
 100000000	164	335	Bacteria	Acidobacteria	Acidobacteria	\N	\N	\N	Acidobacteria	Bacteria	Acidobacteria	Acidobacteria	\N	\N	\N	Acidobacteria	\N	2008-10-12	2008	10	0	\N	NL	\N	\N	\N	\N	0	0	0	0	\N	0	2012-07-05 00:22:36
 500000000	164	335	Bacteria	Acidobacteria	Acidobacteria	\N	\N	\N	Acidobacteria	Bacteria	Acidobacteria	Acidobacteria	\N	\N	\N	Acidobacteria	\N	2010-03-05	2010	3	0	\N	NL	\N	\N	\N	\N	0	0	0	0	\N	0	2010-03-05 00:22:36
+670000000	164	335	Bacteria	Acidobacteria	Acidobacteria	\N	\N	\N	Acidobacteria	Bacteria	Acidobacteria	Acidobacteria	\N	\N	\N	Acidobacteria	\N	2010-03-05	2010	3	0	\N	NL	\N	\N	\N	\N	15d 55m s N	15d 55m s N	100d 55m s E	100d 55m s E	\N	0	2010-03-05 00:22:36
