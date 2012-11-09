@@ -93,16 +93,32 @@
   (and (not= name nil) (not= name "")))
 
 (defn latlon-valid?
-  "Return true if lat and lon are valid, otherwise return false."
+  "Return true if lat and lon are valid decimal degrees,
+   otherwise return false.
+
+   Try/catch form will catch exception from using read-string with
+   non-decimal degree or entirely wrong lats and lons (a la 5°52.5'N, 6d
+   10m s S, or 0/0/0 - all have been seen in the data).
+
+   Note that this will also handle major errors in the lat/lon fields
+   that may be due to mal-formed or non-standard input text lines that
+   would otherwise cause parsing errors."
   [lat lon]
-  (let [latlon-range {:lat-min -90 :lat-max 90 :lon-min -180 :lon-max 180}]
-    (try
-      (let [{:keys [lat-min lat-max lon-min lon-max]} latlon-range]
-        (and (<= lat lat-max)
-             (>= lat lat-min)
-             (<= lon lon-max)
-             (>= lon lon-min)))
-      (catch Exception e false))))
+  (try
+    (let [latlon-range {:lat-min -90 :lat-max 90 :lon-min -180 :lon-max 180}
+          {:keys [lat-min lat-max lon-min lon-max]} latlon-range
+          [lat lon] (map read-string [lat lon])]
+      (and (<= lat lat-max)
+           (>= lat lat-min)
+           (<= lon lon-max)
+           (>= lon lon-min)))
+       (catch Exception e false)))
+
+(defn truncate-latlon
+  "Cast all lats and lons to strings with supplied number of decimal places."
+  [lat lon digits]
+  (let [format-str (str "%." (str digits) "f")]
+    (map (partial format format-str) [(double lat) (double lon)])))
 
 (defn cleanup-slash-N
   "Replace \\N with empty string in precision field."
@@ -140,3 +156,50 @@
         season (get (parse-hemisphere hemisphere)
                     (get-season-idx month))]
     (format "%s %s" hemisphere season)))
+
+(defn surround-str
+  "Surround a supplied string with supplied string.
+
+   Usage:
+     (surround-str \"yomama\" \"'\")
+     ;=> \"'yomamma'\""
+  [s surround-with]
+  (format "%s%s%s" surround-with s surround-with))
+
+(defn concat-results
+  "Concatenate a collection of strings, with an optional separator."
+  [results-vec & [sep]]
+  (apply str (interpose sep results-vec)))
+
+(defn prep-vals
+  "Format collection for insert, including adding quotes and {}.
+
+   Usage:
+     (u/prep-vals [[\"1223445\" \"2302043\"] [\"2132424\"]])
+     ;=> \"'{\"1223445,2302043\", \"2132424\"}'\"
+
+     Looks nicer if you print it with `println`"
+  [coll]
+  (->> coll
+       (map #(concat-results % ","))
+       (map #(surround-str % "\""))
+       (#(concat-results % ", "))
+       (format "{%s}")
+       (#(surround-str % "'"))))
+
+(defn mk-value-str
+  "Given various fields, make comma-separated value string for insert
+   statement."
+  [name occ-ids precisions years months seasons]
+  (-> [(surround-str name "'") (prep-vals occ-ids)
+       (prep-vals precisions) (prep-vals years)
+       (prep-vals months) (prep-vals seasons)]
+      (concat-results ", ")))
+
+(defn mk-insert-stmt
+  "Create final insert statement given a value string and multi-point
+  string"
+  [value-str multi-point]
+  (let [s (str "INSERT INTO gbif_points (name, occids, precision, year, month,"
+               " season, the_geom_multipoint) values (%s, ST_GeomFromText('%s', 4326))")]
+    (format s value-str multi-point)))

@@ -22,17 +22,18 @@
 (defn read-occurrences
   "Returns a Cascalog generator of occurence fields for supplied data path."
   ([]
-     (read-occurrences local-data)) 
+     (read-occurrences local-data))
   ([path]
-     (let [src (hfs-textline path)]
-       (<- [?scientificname ?lat-f ?lon-f ?occurrenceid ?prec ?year ?month]
+     (let [digits 7
+           src (hfs-textline path)]
+       (<- [?scientificname ?lat-str ?lon-str ?occurrenceid ?prec ?year ?month]
            (src ?line)
            (u/split-line ?line :>> occ-fields)
            (u/cleanup-slash-N ?coordinateprecision :> ?prec)
            (u/valid-name? ?scientificname)
+           (u/latlon-valid? ?latitude ?longitude)
            ((c/each #'read-string) ?latitude ?longitude :> ?lat ?lon)
-           (u/latlon-valid? ?lat ?lon)
-           ((c/each #'float) ?lat ?lon :> ?lat-f ?lon-f)
+           (u/truncate-latlon ?lat ?lon digits :> ?lat-str ?lon-str)
            (:distinct true)))))
 
 (defbufferop collect-by-latlon
@@ -55,8 +56,10 @@
   "Shred some GBIF."
   [& {:keys [path] :or {path local-data}}]
   (let [occ-src (read-occurrences path)]
-  (<- [?sci-name ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons]
+  (<- [?sci-name ?stmt]
       (occ-src ?sci-name ?lat ?lon ?occ-id ?prec ?year ?month)
       (u/get-season ?lat ?month :> ?season)
       (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
-                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons))))
+                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons)
+      (u/mk-value-str ?sci-name ?occ-ids ?precs ?yrs ?mos ?seasons :> ?val-str)
+      (u/mk-insert-stmt ?val-str ?multipoint :> ?stmt))))
