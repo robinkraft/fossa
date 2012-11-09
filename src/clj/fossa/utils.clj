@@ -174,10 +174,10 @@
 (defn mk-value-str
   "Given various fields, make comma-separated value string for insert
    statement."
-  [name occ-ids precision year month season]
+  [name occ-ids precisions years months seasons]
   (-> [(surround-str name "'") (prep-vals occ-ids)
-       (prep-vals precision) (prep-vals year)
-       (prep-vals month)]
+       (prep-vals precisions) (prep-vals years)
+       (prep-vals months) (prep-vals seasons)]
       (concat-results ", ")))
 
 (defn mk-insert-stmt
@@ -185,5 +185,5 @@
   string"
   [value-str multi-point]
   (let [s (str "INSERT INTO gbif_points (name, occids, precision, year, month,"
-               " season, the_geom_multipoint) values (%s) ST_GeomFromText('%s', 4326)")]
+               " season, the_geom_multipoint) values (%s ST_GeomFromText('%s', 4326))")]
     (format s value-str multi-point)))
