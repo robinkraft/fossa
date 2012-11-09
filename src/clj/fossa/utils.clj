@@ -185,5 +185,5 @@
   string"
   [value-str multi-point]
   (let [s (str "INSERT INTO gbif_points (name, occids, precision, year, month,"
-               " season, the_geom_multipoint) values (%s ST_GeomFromText('%s', 4326))")]
+               " season, the_geom_multipoint) values (%s, ST_GeomFromText('%s', 4326))")]
     (format s value-str multi-point)))

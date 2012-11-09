@@ -129,5 +129,5 @@
           "season, the_geom_multipoint) values ('Acidobacteria', "
           "'{\"1223445,2302043\", \"2132424\"}', '{\" , \", \" \"}', "
           "'{\"2007,2008\", \"2009\"}', '{\"6,7\", \"12\"}', "
-          "'{\"S spring,S fall\", \"N fall\"}' "
+          "'{\"S spring,S fall\", \"N fall\"}', "
           "ST_GeomFromText('MULTIPOINT (4 1, 5 2)', 4326))"))
