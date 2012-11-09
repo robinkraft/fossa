@@ -7,7 +7,8 @@
   :resources-path "resources"
   :profiles {:dev {:dependencies [[org.apache.hadoop/hadoop-core "0.20.2-dev"]
                                   [midje-cascalog "0.4.0"]]}
-             :plugins [[lein-midje "2.0.0-SNAPSHOT"]]}
+             :plugins [[lein-midje "2.0.0-SNAPSHOT"]
+                       [lein-emr "0.1.0-SNAPSHOT"]]}
   :plugins [[lein-swank "1.4.4"]]
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [cascalog "1.9.0"]
