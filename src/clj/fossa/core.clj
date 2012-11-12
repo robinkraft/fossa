@@ -7,6 +7,9 @@
 ;; Slurps resources/occ.txt:
 (def local-data (.getPath (io/resource "occ.txt")))
 
+;; eBird data resource id:
+(def ^:const EBIRD-ID "43")
+
 ;; Ordered column names from the occurrence_20120802.txt.gz dump.
 (def occ-fields ["?occurrenceid" "?taxonid" "?dataresourceid" "?kingdom"
                  "?phylum" "?class" "?orderrank" "?family" "?genus"
@@ -19,6 +22,16 @@
                  "?latitudeinterpreted" "?longitude" "?longitudeinterpreted"
                  "?coordinateprecision" "?geospatialissue" "?lastindexed"])
 
+(defn not-ebird
+  "Return true if supplied id represents an eBird record, otherwise false."
+  [id]
+  (not= id EBIRD-ID))
+
+(defn passer-domesticus?
+  "Return true if supplied sciname is Passer domesticus, otherwise false."
+  [sciname]
+  (= "passer domesticus" (clojure.string/trim (clojure.string/lower-case sciname))))
+
 (defn read-occurrences
   "Returns a Cascalog generator of occurence fields for supplied data path."
   ([]
@@ -29,6 +42,8 @@
        (<- [?scientificname ?lat-str ?lon-str ?occurrenceid ?prec ?year ?month]
            (src ?line)
            (u/split-line ?line :>> occ-fields)
+           (not-ebird ?dataresourceid) ;; Filter out eBird (See http://goo.gl/4OMLl)
+           (passer-domesticus? ?scientificname) ;; For test data only.
            (u/cleanup-slash-N ?coordinateprecision :> ?prec)
            (u/valid-name? ?scientificname)
            (u/latlon-valid? ?latitude ?longitude)
