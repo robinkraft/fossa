@@ -37,7 +37,7 @@
        (<- [?scientificname ?lat-str ?lon-str ?occurrenceid ?prec ?year ?month]
            (src ?line)
            (u/split-line ?line :>> occ-fields)
-           (not-ebird ?dataresourceid)
+           (not-ebird ?dataresourceid) ;; Filter out eBird (See http://goo.gl/4OMLl)
            (u/cleanup-slash-N ?coordinateprecision :> ?prec)
            (u/valid-name? ?scientificname)
            (u/latlon-valid? ?latitude ?longitude)
