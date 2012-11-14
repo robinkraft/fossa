@@ -168,6 +168,17 @@
            (apply str)
            (handle-zeros)))))
 
+(def season-map
+  "Encodes seasons as indices: 0-3 for northern hemisphere, 4-7 for the south"
+  {"N winter" 0
+   "N spring" 1
+   "N summer" 2
+   "N fall" 3
+   "S winter" 4
+   "S spring" 5
+   "S summer" 6
+   "S fall" 7})
+
 (defn parse-hemisphere
   "Returns a quarter->season map based on the hemisphere."
   [h]
@@ -193,12 +204,14 @@
      (get-season 40.0 1)
      ;=> \"N winter\""
   [lat month]
-  (let [lat (if (string? lat) (read-string lat) lat)
-        month (if (string? month) (read-string month) month)
-        hemisphere (if (pos? lat) "N" "S")
-        season (get (parse-hemisphere hemisphere)
-                    (get-season-idx month))]
-    (format "%s %s" hemisphere season)))
+  (if (= "" month)
+    ""
+    (let [lat (if (string? lat) (read-string lat) lat)
+          month (if (string? month) (read-string month) month)
+          hemisphere (if (pos? lat) "N" "S")
+          season (get (parse-hemisphere hemisphere)
+                      (get-season-idx month))]
+      (str (get season-map (format "%s %s" hemisphere season))))))
 
 (defn surround-str
   "Surround a supplied string with supplied string.

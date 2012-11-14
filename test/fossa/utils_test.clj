@@ -128,16 +128,16 @@
 
 (fact
   "Test get-season"
-  (get-season 1 1) => "N winter"
-  (get-season -1 1) => "S summer"
-  (get-season 1 3) => "N spring"
-  (get-season -1 3) => "S fall"
-  (get-season 1 4) => "N spring"
-  (get-season -1 4) => "S fall"
-  (get-season 1 7) => "N summer"
-  (get-season -1 7) => "S winter"
-  (get-season 1 10) => "N fall"
-  (get-season -1 10) => "S spring")
+  (get-season 1 1) => "0"
+  (get-season -1 1) => "6"
+  (get-season 1 3) => "1"
+  (get-season -1 3) => "7"
+  (get-season 1 4) => "1"
+  (get-season -1 4) => "7"
+  (get-season 1 7) => "2"
+  (get-season -1 7) => "4"
+  (get-season 1 10) => "3"
+  (get-season -1 10) => "5")
 
 (facts
   "Test surround-str"
