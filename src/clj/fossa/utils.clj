@@ -168,8 +168,6 @@
            (apply str)
            (handle-zeros)))))
 
-
-
 (defn parse-hemisphere
   "Returns a quarter->season map based on the hemisphere."
   [h]
