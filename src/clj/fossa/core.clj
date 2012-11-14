@@ -35,8 +35,7 @@
 (defn cleanup-data
   "Cleanup data by handling rounding, missing data, etc."
   [digits lat lon prec year month]
-  (let [[lat lon] (map read-string [lat lon])
-        [clean-prec clean-year clean-month] (map u/str->num-or-empty-str [prec year month])]
+  (let [[lat lon clean-prec clean-year clean-month] (map u/str->num-or-empty-str [lat lon prec year month])]
     (concat (map (partial u/round-to digits) [lat lon clean-prec])
             (map str [clean-year clean-month]))))
 
