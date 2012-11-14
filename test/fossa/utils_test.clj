@@ -71,21 +71,47 @@
   (valid-name? nil) => false)
 
 (facts
-  "Test latlon-valid?"
-  (latlon-valid? "1.2" "2.3") => true
-  (latlon-valid? "15d 55m s S" "15d 55m s E") => false
-  (latlon-valid? "ants" "1.2") => false)
+  "Test valid-latlon?"
+  (valid-latlon? 1.2 2.3) => true
+  (valid-latlon? "1.2" "2.3") => true
+  (valid-latlon? 100 100.) => false
+  (valid-latlon? "100" "100.") => false)
 
 (facts
-  "Test truncate-latlon"
-  (truncate-latlon 1.2 1.3 7) => ["1.2000000" "1.3000000"]
-  (truncate-latlon 0 0 7) => ["0.0000000" "0.0000000"]
-  (truncate-latlon 1.234 5.678 2) => ["1.23" "5.68"])
+  "Test str->num-or-empty-str"
+  (str->num-or-empty-str "1.2") => 1.2
+  (str->num-or-empty-str "\\N") => "")
 
-(fact
-  "Test cleanup-slash-N - replacing \\N with empty string"
-  (cleanup-slash-N "\\N") => ""
-  (cleanup-slash-N "Really precise") => "Really precise")
+(facts
+  "Test handle-zeros"
+  (handle-zeros "3.") => "3"
+  (handle-zeros "3.0") => "3"
+  (handle-zeros "3.0000") => "3"
+  (handle-zeros "3.00100") => "3.00100"
+  (handle-zeros "3") => "3"
+  (handle-zeros "3.445480") => "3.445480"
+  (handle-zeros "3.1234567890") => "3.1234567890")
+
+(facts
+  "Test round-to"
+  (round-to 7 3) => "3"
+  (round-to 7 3.1234567890) => "3.1234568"
+  (round-to 7 3.0) => "3"
+  (round-to 7 3.120) => "3.12"
+  (round-to 7 3.1000000) => "3.1"
+  (round-to 7 3.10000009) => "3.1000001"
+  (round-to 7 300) => "300"
+  (round-to 7 300.0) => "300"
+  (round-to 7 300.123456789) => "300.1234568"
+  (round-to 7 -3) => "-3"
+  (round-to 7 -3.1234567890) => "-3.1234568"
+  (round-to 7 -3.0) => "-3"
+  (round-to 7 -3.120) => "-3.12"
+  (round-to 7 -3.1000000) => "-3.1"
+  (round-to 7 -3.10000009) => "-3.1000001"
+  (round-to 7 -300) => "-300"
+  (round-to 7 -300.0) => "-300"
+  (round-to 7 -300.123456789) => "-300.1234568")
 
 (fact
   "Test parse-hemisphere"

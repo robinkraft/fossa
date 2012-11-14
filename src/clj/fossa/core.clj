@@ -32,23 +32,31 @@
   [sciname]
   (= "passer domesticus" (clojure.string/trim (clojure.string/lower-case sciname))))
 
+(defn cleanup-data
+  "Cleanup data by handling rounding, missing data, etc."
+  [digits lat lon prec year month]
+  (let [[lat lon] (map read-string [lat lon])
+        [clean-prec clean-year clean-month] (map u/str->num-or-empty-str [prec year month])]
+    (concat (map (partial u/round-to digits) [lat lon clean-prec])
+            (map str [clean-year clean-month]))))
+
 (defn read-occurrences
   "Returns a Cascalog generator of occurence fields for supplied data path."
   ([]
      (read-occurrences local-data))
   ([path]
-     (let [digits 7
+     (let [digits 7 ;; round all floats to max seven digits
            src (hfs-textline path)]
-       (<- [?scientificname ?lat-str ?lon-str ?occurrenceid ?prec ?year ?month]
+       (<- [?scientificname ?occurrenceid ?lat ?lon ?clean-prec ?clean-year ?clean-month]
            (src ?line)
            (u/split-line ?line :>> occ-fields)
            (not-ebird ?dataresourceid) ;; Filter out eBird (See http://goo.gl/4OMLl)
            (passer-domesticus? ?scientificname) ;; For test data only.
-           (u/cleanup-slash-N ?coordinateprecision :> ?prec)
            (u/valid-name? ?scientificname)
-           (u/latlon-valid? ?latitude ?longitude)
-           ((c/each #'read-string) ?latitude ?longitude :> ?lat ?lon)
-           (u/truncate-latlon ?lat ?lon digits :> ?lat-str ?lon-str)
+           (u/valid-latlon? ?lat ?lon)
+           (cleanup-data
+            digits ?latitude ?longitude ?coordinateprecision ?year ?month :>
+            ?lat ?lon ?clean-prec ?clean-year ?clean-month)
            (:distinct true)))))
 
 (defbufferop collect-by-latlon
@@ -72,7 +80,7 @@
   [& {:keys [path] :or {path local-data}}]
   (let [occ-src (read-occurrences path)]
   (<- [?sci-name ?stmt]
-      (occ-src ?sci-name ?lat ?lon ?occ-id ?prec ?year ?month)
+      (occ-src ?sci-name ?occ-id ?lat ?lon ?prec ?year ?month)
       (u/get-season ?lat ?month :> ?season)
       (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
                          :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons)

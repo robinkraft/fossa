@@ -92,9 +92,24 @@
   [name]
   (and (not= name nil) (not= name "")))
 
-(defn latlon-valid?
+(defn valid-latlon?
   "Return true if lat and lon are valid decimal degrees,
-   otherwise return false.
+   otherwise return false. Assumes that lat and lon are both either numeric
+   or string."
+  [lat lon]
+  (let [[lat lon] (if (number? lat)
+                    [lat lon]
+                    (map read-string [lat lon]))
+        latlon-range {:lat-min -90 :lat-max 90 :lon-min -180 :lon-max 180}
+        {:keys [lat-min lat-max lon-min lon-max]} latlon-range]
+    (and (<= lat lat-max)
+         (>= lat lat-min)
+         (<= lon lon-max)
+         (>= lon lon-min))))
+
+(defn str->num-or-empty-str
+  "Convert a string to a number with read-string and return it. If not a
+   number, return an empty string.
 
    Try/catch form will catch exception from using read-string with
    non-decimal degree or entirely wrong lats and lons (a la 5°52.5'N, 6d
@@ -103,27 +118,55 @@
    Note that this will also handle major errors in the lat/lon fields
    that may be due to mal-formed or non-standard input text lines that
    would otherwise cause parsing errors."
-  [lat lon]
-  (try
-    (let [latlon-range {:lat-min -90 :lat-max 90 :lon-min -180 :lon-max 180}
-          {:keys [lat-min lat-max lon-min lon-max]} latlon-range
-          [lat lon] (map read-string [lat lon])]
-      (and (<= lat lat-max)
-           (>= lat lat-min)
-           (<= lon lon-max)
-           (>= lon lon-min)))
-       (catch Exception e false)))
-
-(defn truncate-latlon
-  "Cast all lats and lons to strings with supplied number of decimal places."
-  [lat lon digits]
-  (let [format-str (str "%." (str digits) "f")]
-    (map (partial format format-str) [(double lat) (double lon)])))
-
-(defn cleanup-slash-N
-  "Replace \\N with empty string in precision field."
   [s]
-  (if (= s "\\N") "" s))
+  (try
+    (let [parsed-str (read-string s)]
+      (if (number? parsed-str)
+        parsed-str
+        ""))
+    (catch Exception e "")))
+
+(defn handle-zeros
+  "Handle trailing decimal points and trailing zeros. A trailing decimal
+   point is removed entirely, while trailing zeros are only dropped if
+   they immediately follow the decimal point.
+
+   Usage:
+     (handle-zeros \"3.\")
+     ;=> \"3\"
+
+     (handle-zeros \"3.0\")
+     ;=> \"3\"
+
+     (handle-zeros \"3.00\")
+     ;=> \"3\"
+
+     (handle-zeros \"3.001\")
+     ;=> \"3.001\"
+
+     (handle-zeros \"3.00100\")
+     ;=>\"3.00100\""
+  [s]
+  (let [[head tail] (clojure.string/split s #"\.")]
+    (if (or (zero? (count tail)) ;; nothing after decimal place
+            (zero? (Integer/parseInt tail))) ;; all zeros after decimal place
+      (str (Integer/parseInt head))
+      s)))
+
+(defn round-to
+  "Round a value to a given number of decimal places and return a
+   string. Note that this will drop all trailing zeros, and values like
+   3.0 will be returned as \"3\""
+  [digits n]
+  (let [formatter (str "%." (str digits) "f")]
+    (if (= "" n)
+      n
+      (->> (format formatter (double n))
+           reverse
+           (drop-while #{\0})
+           reverse
+           (apply str)
+           (handle-zeros)))))
 
 (defn parse-hemisphere
   "Returns a quarter->season map based on the hemisphere."
@@ -133,7 +176,7 @@
     (if (= h "N") n_seasons s_seasons)))
 
 (defn get-season-idx
-  "Returns season index given a month."
+  "Returns season index (roughly quarter) given a month."
   [month]
   {:pre [(>= 12 month)]}
   (let [season-idxs {11 0 12 0 1 0
