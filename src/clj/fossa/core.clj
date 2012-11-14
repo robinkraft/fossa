@@ -1,9 +1,14 @@
 (ns fossa.core
   (:use [cascalog.api])
-  (:require [cascalog.ops :as c]))
+  (:require [fossa.utils :as u]
+            [cascalog.ops :as c]
+            [clojure.java.io :as io]))
 
-(def local-data
-  "/mnt/hgfs/Dropbox/code/github/MapofLife/gbifer/resources/gbif/occ.txt")
+;; Slurps resources/occ.txt:
+(def local-data (.getPath (io/resource "occ.txt")))
+
+;; eBird data resource id:
+(def ^:const EBIRD-ID "43")
 
 ;; Ordered column names from the occurrence_20120802.txt.gz dump.
 (def occ-fields ["?occurrenceid" "?taxonid" "?dataresourceid" "?kingdom"
@@ -17,43 +22,67 @@
                  "?latitudeinterpreted" "?longitude" "?longitudeinterpreted"
                  "?coordinateprecision" "?geospatialissue" "?lastindexed"])
 
-(defn split-line
-  "Returns vector of line values by splitting on tab."
-  [line]
-  (vec (.split line "\t")))
+(defn not-ebird
+  "Return true if supplied id represents an eBird record, otherwise false."
+  [id]
+  (not= id EBIRD-ID))
+
+(defn passer-domesticus?
+  "Return true if supplied sciname is Passer domesticus, otherwise false."
+  [sciname]
+  (= "passer domesticus" (clojure.string/trim (clojure.string/lower-case sciname))))
+
+(defn cleanup-data
+  "Cleanup data by handling rounding, missing data, etc."
+  [digits lat lon prec year month]
+  (let [[lat lon] (map read-string [lat lon])
+        [clean-prec clean-year clean-month] (map u/str->num-or-empty-str [prec year month])]
+    (concat (map (partial u/round-to digits) [lat lon clean-prec])
+            (map str [clean-year clean-month]))))
 
 (defn read-occurrences
+  "Returns a Cascalog generator of occurence fields for supplied data path."
   ([]
-     (read-occurrences local-data)) 
+     (read-occurrences local-data))
   ([path]
-     (let [src (hfs-textline path)]
-       (<- [?scientificname ?occurrenceid ?latitude ?longitude]
+     (let [digits 7 ;; round all floats to max seven digits
+           src (hfs-textline path)]
+       (<- [?scientificname ?occurrenceid ?lat ?lon ?clean-prec ?clean-year ?clean-month]
            (src ?line)
-           (split-line ?line :>> occ-fields)))))
+           (u/split-line ?line :>> occ-fields)
+           (not-ebird ?dataresourceid) ;; Filter out eBird (See http://goo.gl/4OMLl)
+           (passer-domesticus? ?scientificname) ;; For test data only.
+           (u/valid-name? ?scientificname)
+           (u/valid-latlon? ?lat ?lon)
+           (cleanup-data
+            digits ?latitude ?longitude ?coordinateprecision ?year ?month :>
+            ?lat ?lon ?clean-prec ?clean-year ?clean-month)
+           (:distinct true)))))
 
-(defn latlons->wkt-multi-point
-  [lats lons]
-  (let [out-str "MULTIPOINT (%s)"
-        sep ", "]
-    (->> (interleave lats lons)
-         (partition 2 2)
-         (map seq)
-         (interpose sep)
-         (apply str)
-         (format out-str))))
-
-(defbufferop collect-ids-latlons
+(defbufferop collect-by-latlon
+  "Returns WKT MULTIPOINT for each unique latlon, along with
+   occurrence ids, precision, year and month of each
+   observation. Observations need not be unique - they are aggregated
+   into vectors and ordered the same as the multi-point."
   [tuples]
-  (let [occ-ids (vec (map first tuples))
-        lats (map #(nth % 1) tuples)
-        lons (map #(nth % 2) tuples)]
-    [[occ-ids (latlons->wkt-multi-point lats lons)]]))
+  (let [lats (u/extract 0 tuples)
+        lons (u/extract 1 tuples)
+        occ (u/extract-field tuples lats lons 2)
+        prec (u/extract-field tuples lats lons 3)
+        yr (u/extract-field tuples lats lons 4)
+        mo (u/extract-field tuples lats lons 5)
+        season (u/extract-field tuples lats lons 6)
+        multi-pt (u/parse-for-wkt lats lons)]
+    [[multi-pt (vec occ) (vec prec) (vec yr) (vec mo) (vec season)]]))
 
 (defn parse-occurrence-data
-  [path]
+  "Shred some GBIF."
+  [& {:keys [path] :or {path local-data}}]
   (let [occ-src (read-occurrences path)]
-  (<- [?sci-name ?occ-ids ?multi-point]
-      (occ-src ?sci-name ?occ-id ?lat-str ?lon-str)
-      ((c/each #'read-string) ?lat-str ?lon-str :> ?lat ?lon)
-      (collect-ids-latlons ?occ-id ?lat ?lon :> ?occ-ids ?multi-point))))
-
+  (<- [?sci-name ?stmt]
+      (occ-src ?sci-name ?occ-id ?lat ?lon ?prec ?year ?month)
+      (u/get-season ?lat ?month :> ?season)
+      (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
+                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons)
+      (u/mk-value-str ?sci-name ?occ-ids ?precs ?yrs ?mos ?seasons :> ?val-str)
+      (u/mk-insert-stmt ?val-str ?multipoint :> ?stmt))))
