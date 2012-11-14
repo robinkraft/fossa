@@ -1,4 +1,5 @@
-(ns fossa.utils)
+(ns fossa.utils
+  (:require [clojure.string :as clj-str]))
 
 (defn split-line
   "Returns vector of line values by splitting on tab."
@@ -97,15 +98,18 @@
    otherwise return false. Assumes that lat and lon are both either numeric
    or string."
   [lat lon]
-  (let [[lat lon] (if (number? lat)
-                    [lat lon]
-                    (map read-string [lat lon]))
-        latlon-range {:lat-min -90 :lat-max 90 :lon-min -180 :lon-max 180}
-        {:keys [lat-min lat-max lon-min lon-max]} latlon-range]
-    (and (<= lat lat-max)
-         (>= lat lat-min)
-         (<= lon lon-max)
-         (>= lon lon-min))))
+  (if (or (= "" lat)
+          (= "" lon))
+    false   
+    (let [[lat lon] (if (number? lat)
+                      [lat lon]
+                      (map read-string [lat lon]))
+          latlon-range {:lat-min -90 :lat-max 90 :lon-min -180 :lon-max 180}
+          {:keys [lat-min lat-max lon-min lon-max]} latlon-range]
+      (and (<= lat lat-max)
+           (>= lat lat-min)
+           (<= lon lon-max)
+           (>= lon lon-min)))))
 
 (defn str->num-or-empty-str
   "Convert a string to a number with read-string and return it. If not a
@@ -147,7 +151,7 @@
      (handle-zeros \"3.00100\")
      ;=>\"3.00100\""
   [s]
-  (let [[head tail] (clojure.string/split s #"\.")]
+  (let [[head tail] (clj-str/split s #"\.")]
     (if (or (zero? (count tail)) ;; nothing after decimal place
             (zero? (Integer/parseInt tail))) ;; all zeros after decimal place
       (str (Integer/parseInt head))
