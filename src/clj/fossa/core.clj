@@ -76,12 +76,11 @@
 
 (defn parse-occurrence-data
   "Shred some GBIF."
-  [& {:keys [path] :or {path local-data}}]
-  (let [occ-src (read-occurrences path)]
+  [occ-src]
   (<- [?sci-name ?stmt]
       (occ-src ?sci-name ?occ-id ?lat ?lon ?prec ?year ?month)
       (u/get-season ?lat ?month :> ?season)
       (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
                          :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons)
       (u/mk-value-str ?sci-name ?occ-ids ?precs ?yrs ?mos ?seasons :> ?val-str)
-      (u/mk-insert-stmt ?val-str ?multipoint :> ?stmt))))
+      (u/mk-insert-stmt ?val-str ?multipoint :> ?stmt)))
