@@ -14,5 +14,5 @@
 (fact
   "Test parse-occurrence-data"
   (parse-occurrence-data (read-occurrences))
-  => (produces [["Passer domesticus" "INSERT INTO gbif_points (name, occids, precision, year, month, season, the_geom_multipoint) values ('Passer domesticus', '{\"999999999,111111111\", \"333333333,444444444,222222222\"}', '{\",10\", \",,10\"}', '{\"2007,2007\", \"2007,2007,2007\"}', '{\"6,\", \",,\"}', '{\"4,\", \",,\"}', ST_GeomFromText('MULTIPOINT (170.851 -40.8747, 170.851 -40.8747283)', 4326))"]]))
+  => (produces-some [["Passer domesticus" "INSERT INTO gbif_points (name, occids, precision, year, month, season, the_geom_multipoint) values ('Passer domesticus', '{\"999999999,111111111\", \"333333333,444444444,222222222\"}', '{\",10\", \",,10\"}', '{\"2007,2007\", \"2007,2007,2007\"}', '{\"6,\", \",,\"}', '{\"4,\", \",,\"}', ST_GeomFromText('MULTIPOINT (170.851 -40.8747, 170.851 -40.8747283)', 4326))"]]))
 

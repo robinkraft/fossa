@@ -27,11 +27,6 @@
   [id]
   (not= id EBIRD-ID))
 
-(defn passer-domesticus?
-  "Return true if supplied sciname is Passer domesticus, otherwise false."
-  [sciname]
-  (= "passer domesticus" (clojure.string/trim (clojure.string/lower-case sciname))))
-
 (defn cleanup-data
   "Cleanup data by handling rounding, missing data, etc."
   [digits lat lon prec year month]
@@ -50,7 +45,6 @@
            (src ?line)
            (u/split-line ?line :>> occ-fields)
            (not-ebird ?dataresourceid) ;; Filter out eBird (See http://goo.gl/4OMLl)
-           (passer-domesticus? ?scientificname) ;; For test data only.
            (u/valid-name? ?scientificname)
            (u/valid-latlon? ?lat ?lon)
            (cleanup-data
