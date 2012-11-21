@@ -1,5 +1,6 @@
 (ns fossa.core-test
-  (:use [midje sweet cascalog]
+  (:use cascalog.api
+        [midje sweet cascalog]
         fossa.core))
 
 (fact
@@ -13,6 +14,13 @@
 
 (fact
   "Test parse-occurrence-data"
-  (parse-occurrence-data (read-occurrences))
-  => (produces-some [["Passer domesticus" "INSERT INTO gbif_points (name, occids, precision, year, month, season, the_geom_multipoint) values ('Passer domesticus', '{\"999999999,111111111\", \"333333333,444444444,222222222\"}', '{\",10\", \",,10\"}', '{\"2007,2007\", \"2007,2007,2007\"}', '{\"6,\", \",,\"}', '{\"4,\", \",,\"}', ST_GeomFromText('MULTIPOINT (170.851 -40.8747, 170.851 -40.8747283)', 4326))"]]))
-
+  (let [src (parse-occurrence-data (read-occurrences))]
+    (<- [?stmt]
+        (src _ ?stmt)))
+  => (produces-some
+      [["UPDATE gbif_points SET the_geom_multipoint = 'MULTIPOINT (0 0, -70.6336 41.576233, 6.144433 53.49027)' WHERE name = 'Acidobacteria';"]
+       ["UPDATE gbif_points SET occids = '{\"100000000,500000000\", \"242135541\", \"244661001\"}' WHERE name = 'Acidobacteria';"]
+       ["UPDATE gbif_points SET precision = '{\",\", \"\", \"\"}' WHERE name = 'Acidobacteria';"]
+       ["UPDATE gbif_points SET year = '{\"2008,2010\", \"2007\", \"2008\"}' WHERE name = 'Acidobacteria';"]
+       ["UPDATE gbif_points SET month = '{\"10,3\", \"6\", \"5\"}' WHERE name = 'Acidobacteria';"]
+       ["UPDATE gbif_points SET season = '{\"5,7\", \"2\", \"2\"}' WHERE name = 'Acidobacteria';"]]))

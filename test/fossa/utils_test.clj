@@ -181,3 +181,21 @@
           "'{\"2007,2008\", \"2009\"}', '{\"6,7\", \"12\"}', "
           "'{\"S spring,S fall\", \"N fall\"}', "
           "ST_GeomFromText('MULTIPOINT (4 1, 5 2)', 4326))"))
+
+(fact
+  "Test mk-update-stmt"
+  (mk-update-stmt "Acidobacteria" "years" "'{\"2008,2009\", \"2009\"}'")
+  => "UPDATE gbif_points SET years = '{\"2008,2009\", \"2009\"}' WHERE name = 'Acidobacteria';")
+
+(fact
+  "Test "
+  (let [sci-name "Passer"
+        field-name "occids"
+        field-num 2
+        tuples [["-1.7" "29.3" "99999999" "" "2007" "8" "1"]
+                ["-1.7" "29.3" "11111111" "" "2007" "8" "1"]
+                ["-1" "30" "22222222" "" "2012" "3" "4"]]
+        lats (extract 0 tuples)
+        lons (extract 1 tuples)]
+    (data->update-stmt tuples lats lons sci-name field-name field-num))
+  => "UPDATE gbif_points SET occids = '{\"22222222\", \"99999999,11111111\"}' WHERE name = 'Passer';")

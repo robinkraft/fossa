@@ -238,7 +238,7 @@
      (u/prep-vals [[\"1223445\" \"2302043\"] [\"2132424\"]])
      ;=> \"'{\"1223445,2302043\", \"2132424\"}'\"
 
-     Looks nicer if you print it with `println`"
+   That usage example looks nicer if you print it with `println`."
   [coll]
   (->> coll
        (map #(concat-results % ","))
@@ -263,3 +263,16 @@
   (let [s (str "INSERT INTO gbif_points (name, occids, precision, year, month,"
                " season, the_geom_multipoint) values (%s, ST_GeomFromText('%s', 4326))")]
     (format s value-str multi-point)))
+
+(defn mk-update-stmt
+  "Create update statement given a value string and multi-point
+  string"
+  [sci-name field-name value-str]
+  (let [table "gbif_points"
+        s (str "UPDATE %s SET %s = %s WHERE name = '%s';")]
+    (format s table field-name value-str sci-name)))
+
+(defn data->update-stmt
+  "Parses data tuples and returns update statement string"
+  [tuples lats lons sci-name field-name field-num]
+  (mk-update-stmt sci-name field-name (prep-vals (extract-field tuples lats lons field-num))))
