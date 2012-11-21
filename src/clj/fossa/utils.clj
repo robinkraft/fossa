@@ -269,7 +269,7 @@
   string"
   [sci-name field-name value-str]
   (let [table "gbif_points"
-        s (str "UPDATE %s SET %s = %s WHERE \"name\" = '%s';")]
+        s (str "UPDATE %s SET %s = %s WHERE name = '%s';")]
     (format s table field-name value-str sci-name)))
 
 (defn data->update-stmt

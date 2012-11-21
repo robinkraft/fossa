@@ -185,7 +185,7 @@
 (fact
   "Test mk-update-stmt"
   (mk-update-stmt "Acidobacteria" "years" "'{\"2008,2009\", \"2009\"}'")
-  => "UPDATE gbif_points SET years = '{\"2008,2009\", \"2009\"}' WHERE \"name\" = 'Acidobacteria';")
+  => "UPDATE gbif_points SET years = '{\"2008,2009\", \"2009\"}' WHERE name = 'Acidobacteria';")
 
 (fact
   "Test "
@@ -198,4 +198,4 @@
         lats (extract 0 tuples)
         lons (extract 1 tuples)]
     (data->update-stmt tuples lats lons sci-name field-name field-num))
-  => "UPDATE gbif_points SET occids = '{\"22222222\", \"99999999,11111111\"}' WHERE \"name\" = 'Passer';")
+  => "UPDATE gbif_points SET occids = '{\"22222222\", \"99999999,11111111\"}' WHERE name = 'Passer';")
