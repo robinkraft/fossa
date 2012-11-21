@@ -58,23 +58,20 @@
    observation. Observations need not be unique - they are aggregated
    into vectors and ordered the same as the multi-point."
   [tuples]
-  (let [lats (u/extract 0 tuples)
-        lons (u/extract 1 tuples)
-        occ (u/extract-field tuples lats lons 2)
-        prec (u/extract-field tuples lats lons 3)
-        yr (u/extract-field tuples lats lons 4)
-        mo (u/extract-field tuples lats lons 5)
-        season (u/extract-field tuples lats lons 6)
-        multi-pt (u/parse-for-wkt lats lons)]
-    [[multi-pt (vec occ) (vec prec) (vec yr) (vec mo) (vec season)]]))
+  (let [sci-name (first (u/extract 0 tuples))
+        lats (u/extract 1 tuples)
+        lons (u/extract 2 tuples)
+        tuple-parser (partial u/data->update-stmt tuples lats lons sci-name)
+        multi-pt (u/mk-update-stmt sci-name "the_geom_multipoint" (u/surround-str (u/parse-for-wkt lats lons) "'"))]
+    (into [multi-pt] (map tuple-parser ["occids" "precision" "year" "month" "season"] (range 3 8)))))
 
 (defn parse-occurrence-data
   "Shred some GBIF."
   [occ-src]
-  (<- [?sci-name ?stmt]
+  (<- [?sci-name ?update-stmt]
       (occ-src ?sci-name ?occ-id ?lat ?lon ?prec ?year ?month)
       (u/get-season ?lat ?month :> ?season)
-      (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
-                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons)
-      (u/mk-value-str ?sci-name ?occ-ids ?precs ?yrs ?mos ?seasons :> ?val-str)
-      (u/mk-insert-stmt ?val-str ?multipoint :> ?stmt)))
+      (collect-by-latlon ?sci-name ?lat ?lon ?occ-id ?prec ?year ?month ?season
+                         :> ?update-stmt)))
+
+
