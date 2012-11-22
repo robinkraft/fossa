@@ -6,6 +6,10 @@
   [line]
   (vec (.split line "\t")))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Working with latlons ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn mk-latlon-str
   "Make a comma-separated latlon string given lat and lon"
   [lat lon]
@@ -74,6 +78,10 @@
     (latlons->wkt-multi-point (map first latlon-split)
                               (map second latlon-split))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; helpers for  working with defbufferop ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn extract
   "Extract a specific field by index from tuples."
   [field tuples]
@@ -88,10 +96,13 @@
        (mk-sorted-map)
        (vals)))
 
-(defn valid-name?
-  "Return true if name is valid, otherwise return false."
-  [name]
-  (and (not= name nil) (not= name "")))
+(defn extract-latlons
+  [tuples [lat-idx lon-idx]]
+  [(extract lat-idx tuples) (extract lon-idx tuples)])
+
+;;;;;;;;;;;;;;;;;
+;; Data checks ;;
+;;;;;;;;;;;;;;;;;
 
 (defn valid-latlon?
   "Return true if lat and lon are valid decimal degrees,
@@ -110,6 +121,15 @@
            (>= lat lat-min)
            (<= lon lon-max)
            (>= lon lon-min)))))
+
+(defn valid-name?
+  "Return true if name is valid, otherwise return false."
+  [name]
+  (and (not= name nil) (not= name "")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; number formatting functions ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn str->num-or-empty-str
   "Convert a string to a number with read-string and return it. If not a
@@ -172,6 +192,10 @@
            (apply str)
            (handle-zeros)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Working with seasons ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def season-map
   "Encodes seasons as indices: 0-3 for northern hemisphere, 4-7 for the south"
   {"N winter" 0
@@ -217,6 +241,10 @@
                       (get-season-idx month))]
       (str (get season-map (format "%s %s" hemisphere season))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; SQL formatting helpers ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn surround-str
   "Surround a supplied string with supplied string.
 
@@ -247,32 +275,70 @@
        (format "{%s}")
        (#(surround-str % "'"))))
 
-(defn mk-value-str
-  "Given various fields, make comma-separated value string for insert
-   statement."
-  [name occ-ids precisions years months seasons]
-  (-> [(surround-str name "'") (prep-vals occ-ids)
-       (prep-vals precisions) (prep-vals years)
-       (prep-vals months) (prep-vals seasons)]
-      (concat-results ", ")))
-
-(defn mk-insert-stmt
-  "Create final insert statement given a value string and multi-point
-  string"
-  [value-str multi-point]
-  (let [s (str "INSERT INTO gbif_points (name, occids, precision, year, month,"
-               " season, the_geom_multipoint) values (%s, ST_GeomFromText('%s', 4326))")]
-    (format s value-str multi-point)))
-
 (defn mk-update-stmt
   "Create update statement given a value string and multi-point
-  string"
+  string.
+
+  Usage:
+    (mk-update-stmt \"Ursus\" \"occid\" '{\"999999999,111111111\", \"333333333\"}')
+    ;=> \"UPDATE gbif_points SET months = '{\"7,8\", \"9\"}' WHERE name = 'Ursus';\""
   [sci-name field-name value-str]
   (let [table "gbif_points"
         s (str "UPDATE %s SET %s = %s WHERE name = '%s';")]
     (format s table field-name value-str sci-name)))
 
 (defn data->update-stmt
-  "Parses data tuples and returns update statement string"
+  "Parses data tuples and returns update statement string.
+
+   Usage:
+     (let [tuples [[\"1.2\" \"4.5\" \"Ursus\" \"2007\" \"2008\"]
+                   [\"2.3\" \"5.6\" \"Ursus\" \"2009\" \"2010\"]]]
+       (data->update-stmt tuples [\"1.2\" \"4.5\"] [\"3.4\" \"5.6\"]
+                          \"Ursus\" \"years\" 3))
+     ;=> \"UPDATE gbif_points SET years = '{\"2007\", \"2009\"}' WHERE name = 'Ursus';\""
   [tuples lats lons sci-name field-name field-num]
   (mk-update-stmt sci-name field-name (prep-vals (extract-field tuples lats lons field-num))))
+
+(defn mk-multipoint-update
+  "Generate an UPDATE statement that includes a multipoint geometry.
+
+   Usage:
+     (mk-multipoint-update \"Passer\" [1 2 3 3] [4 5 6 6])
+     ;=> \"UPDATE gbif_points SET the_geom_multipoint = 'MULTIPOINT (4 1, 5 2, 6 3)' WHERE name = 'Passer';\""
+  [sci-name lats lons]
+  (-> (parse-for-wkt lats lons)
+      (surround-str "'")
+      (#(mk-update-stmt sci-name "the_geom_multipoint" %))))
+
+(defn get-parse-fields
+  "Returns all field name keys from field-map that are not \"?lats\",
+   \"?lons\", or \"?name\". That is, get only the field names that will
+   be used to generate UPDATE statements.
+
+   Usage:
+   (let [field-map (sorted-map\"?lats\" 0 \"?lons\" 1 \"?name\" 2 \"?year\" 3 \"?month\" 4)]
+     (get-parse-fields field-map))
+   ;=> (\"?month\" \"?year\")"
+  [field-map]
+  (filter #(and (not= "?lats" %) (not= "?lons" %) (not= "?name" %))
+          (keys field-map)))
+
+(defn get-field-idxs
+  "Returns the indices from field-map for all fields that will be used to
+   generate UPDATE statements.
+   (let [field-map (sorted-map \"?lats\" 0 \"?lons\" 1 \"?month\" 2 \"?name\" 3 \"?year\" 4)]
+     (get-field-idxs field-map))
+   ;=> (3 4)"
+  [field-map]
+  (map (partial get field-map) (get-parse-fields field-map)))
+
+(defn drop-q-mark
+  "Returns field names used to generate UPDATE statements, but without
+   their leading question mark.
+
+   Usage:
+     (let [field-map (sorted-map \"?lats\" 0 \"?lons\" 1 \"?month\" 2 \"?name\" 3 \"?year\" 4)]
+       (drop-q-mark field-map))
+     ;=> (\"month\" \"year\")"
+  [field-map]
+  (map (partial apply str) (map rest (get-parse-fields field-map))))

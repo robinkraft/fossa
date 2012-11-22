@@ -11,6 +11,9 @@
 (def test-vals
   [1 2 3 4 5])
 
+(def field-map
+  (sorted-map "?lats" 0 "?lons" 1 "?month" 2 "?name" 3 "?year" 4))
+
 (fact
   (split-line "joe\tblow") => ["joe" "blow"])
 
@@ -156,39 +159,12 @@
   (prep-vals [["2008" "2009"] ["2009"]]) => "'{\"2008,2009\", \"2009\"}'")
 
 (fact
-  "Test mk-value-str. Formatting of result may look funky here, but if
-   you print it with println it's ok...."
-  (mk-value-str "ants"
-                [[1234 3566] [6460]]
-                [["" ""] [""]]
-                [["2008" "2009"] ["2007"]]
-                [["2" "3"] ["4"]]
-                [["N winter" "N spring"] ["N spring"]])
-  => (str "'ants', '{\"1234,3566\", \"6460\"}', '{\",\", \"\"}', "
-          "'{\"2008,2009\", \"2007\"}', '{\"2,3\", \"4\"}', "
-          "'{\"N winter,N spring\", \"N spring\"}'"))
-
-(fact
-  "Test mk-insert-stmt"
-  (let [mp "MULTIPOINT (4 1, 5 2)"]
-    (mk-insert-stmt
-     (mk-value-str "Acidobacteria" [["1223445" "2302043"] ["2132424"]]
-                   [[" " " "] [" "]] [["2007" "2008"] ["2009"]]
-                   [["6" "7"] ["12"]] [["S spring" "S fall"] ["N fall"]]) mp))
-  => (str "INSERT INTO gbif_points (name, occids, precision, year, month, "
-          "season, the_geom_multipoint) values ('Acidobacteria', "
-          "'{\"1223445,2302043\", \"2132424\"}', '{\" , \", \" \"}', "
-          "'{\"2007,2008\", \"2009\"}', '{\"6,7\", \"12\"}', "
-          "'{\"S spring,S fall\", \"N fall\"}', "
-          "ST_GeomFromText('MULTIPOINT (4 1, 5 2)', 4326))"))
-
-(fact
   "Test mk-update-stmt"
   (mk-update-stmt "Acidobacteria" "years" "'{\"2008,2009\", \"2009\"}'")
   => "UPDATE gbif_points SET years = '{\"2008,2009\", \"2009\"}' WHERE name = 'Acidobacteria';")
 
 (fact
-  "Test "
+  "Test data->update-stmt"
   (let [sci-name "Passer"
         field-name "occids"
         field-num 2
@@ -199,3 +175,28 @@
         lons (extract 1 tuples)]
     (data->update-stmt tuples lats lons sci-name field-name field-num))
   => "UPDATE gbif_points SET occids = '{\"22222222\", \"99999999,11111111\"}' WHERE name = 'Passer';")
+
+(fact
+  "Test data->update-stmt"
+  (let [tuples [["1.2" "4.5" "Ursus" "2007" "2008"]
+                ["2.3" "5.6" "Ursus" "2009" "2010"]]]
+    (data->update-stmt tuples ["1.2" "4.5"] ["3.4" "5.6"]
+                       "Ursus" "years" 3))
+  => "UPDATE gbif_points SET years = '{\"2007\", \"2009\"}' WHERE name = 'Ursus';")
+
+(fact
+  "Test mk-multipoint-update"
+  (mk-multipoint-update "Passer" [1 2 3 3] [4 5 6 6])
+  => "UPDATE gbif_points SET the_geom_multipoint = 'MULTIPOINT (4 1, 5 2, 6 3)' WHERE name = 'Passer';")
+
+(fact
+  "Test get-parse-fields"
+  (get-parse-fields field-map) => ["?month" "?year"])
+
+(fact
+  "Test get-field-idxs"
+  (get-field-idxs field-map) => [2 4])
+
+(fact
+  "Test drop-q-mark"
+  (drop-q-mark field-map) => ["month" "year"])
