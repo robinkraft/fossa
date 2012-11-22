@@ -27,16 +27,10 @@
   [id]
   (not= id EBIRD-ID))
 
-(defn passer-domesticus?
-  "Return true if supplied sciname is Passer domesticus, otherwise false."
-  [sciname]
-  (= "passer domesticus" (clojure.string/trim (clojure.string/lower-case sciname))))
-
 (defn cleanup-data
   "Cleanup data by handling rounding, missing data, etc."
   [digits lat lon prec year month]
-  (let [[lat lon] (map read-string [lat lon])
-        [clean-prec clean-year clean-month] (map u/str->num-or-empty-str [prec year month])]
+  (let [[lat lon clean-prec clean-year clean-month] (map u/str->num-or-empty-str [lat lon prec year month])]
     (concat (map (partial u/round-to digits) [lat lon clean-prec])
             (map str [clean-year clean-month]))))
 
@@ -51,7 +45,6 @@
            (src ?line)
            (u/split-line ?line :>> occ-fields)
            (not-ebird ?dataresourceid) ;; Filter out eBird (See http://goo.gl/4OMLl)
-           (passer-domesticus? ?scientificname) ;; For test data only.
            (u/valid-name? ?scientificname)
            (u/valid-latlon? ?lat ?lon)
            (cleanup-data
@@ -59,30 +52,44 @@
             ?lat ?lon ?clean-prec ?clean-year ?clean-month)
            (:distinct true)))))
 
+(def cleaned-fields
+  "List of fields in `cleaned-src`. Adding a new field to the vector
+   will result in the creation of an UPDATE statement for that field
+   in the `parse-occurrence-data` query."
+  ["?name" "?occids" "?lats" "?lons" "?precisions" "?years" "?months"])
+
+(def collect-fields
+  "Fields that will be aggregated by latlon. New fields derived from
+  `cleaned-fields` and generated within `parse-occurrence-data` should
+  be added to the `conj` form for processing into UPDATE statements."
+  (sort (conj cleaned-fields "?season")))
+
+(def field-map
+  "Sorted map of field names as keys and assigned field indices as
+   values. New fields will be assigned appropriate indices as they
+   are added."
+  (u/mk-sorted-map (zipmap collect-fields (range (count collect-fields)))))
+
 (defbufferop collect-by-latlon
-  "Returns WKT MULTIPOINT for each unique latlon, along with
-   occurrence ids, precision, year and month of each
-   observation. Observations need not be unique - they are aggregated
-   into vectors and ordered the same as the multi-point."
-  [tuples]
-  (let [lats (u/extract 0 tuples)
-        lons (u/extract 1 tuples)
-        occ (u/extract-field tuples lats lons 2)
-        prec (u/extract-field tuples lats lons 3)
-        yr (u/extract-field tuples lats lons 4)
-        mo (u/extract-field tuples lats lons 5)
-        season (u/extract-field tuples lats lons 6)
-        multi-pt (u/parse-for-wkt lats lons)]
-    [[multi-pt (vec occ) (vec prec) (vec yr) (vec mo) (vec season)]]))
+  "Returns SQL UPDATE statements as strings for each output field
+   (e.g. latlon, occurrence ids, precision, year, etc.). Observation
+   locations need not be unique - observations at the same location
+   are aggregated and ordered according to the order of the incoming
+   latitude and longitude. For more, see tests and documentation for
+   `u/data->update-stmt`."
+   [tuples]
+  (let [sci-name (first (u/extract (field-map "?name") tuples))
+        [lats lons] (u/extract-latlons tuples (map field-map ["?lats" "?lons"]))
+        tuple-parser (partial u/data->update-stmt tuples lats lons sci-name)
+        field-idxs (u/get-field-idxs field-map)
+        clean-field-names (u/drop-q-mark field-map)]
+    (into [(u/mk-multipoint-update sci-name lats lons)]
+          (map tuple-parser clean-field-names field-idxs))))
 
 (defn parse-occurrence-data
   "Shred some GBIF."
-  [& {:keys [path] :or {path local-data}}]
-  (let [occ-src (read-occurrences path)]
-  (<- [?sci-name ?stmt]
-      (occ-src ?sci-name ?occ-id ?lat ?lon ?prec ?year ?month)
-      (u/get-season ?lat ?month :> ?season)
-      (collect-by-latlon ?lat ?lon ?occ-id ?prec ?year ?month ?season
-                         :> ?multipoint ?occ-ids ?precs ?yrs ?mos ?seasons)
-      (u/mk-value-str ?sci-name ?occ-ids ?precs ?yrs ?mos ?seasons :> ?val-str)
-      (u/mk-insert-stmt ?val-str ?multipoint :> ?stmt))))
+  [cleaned-src]
+  (<- [?name ?update-stmt]
+      (cleaned-src :>> cleaned-fields)
+      (u/get-season ?lats ?months :> ?season)
+      (collect-by-latlon :<< collect-fields :> ?update-stmt)))
