@@ -18,7 +18,7 @@
     (<- [?stmt]
         (src _ ?stmt)))
   => (produces-some
-      [["UPDATE gbif_points SET the_geom_multipoint = 'MULTIPOINT (0 0, -70.6336 41.576233, 6.144433 53.49027)' WHERE name = 'Acidobacteria';"]
+      [["UPDATE gbif_points SET the_geom_multipoint = ST_GeomFromText('MULTIPOINT (0 0, -70.6336 41.576233, 6.144433 53.49027)', 4326) WHERE name = 'Acidobacteria';"]
        ["UPDATE gbif_points SET occids = '{\"100000000,500000000\", \"242135541\", \"244661001\"}' WHERE name = 'Acidobacteria';"]
        ["UPDATE gbif_points SET season = '{\"5,7\", \"2\", \"2\"}' WHERE name = 'Acidobacteria';"]
        ["UPDATE gbif_points SET precisions = '{\",\", \"\", \"\"}' WHERE name = 'Acidobacteria';"]
