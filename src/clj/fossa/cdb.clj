@@ -11,13 +11,25 @@
 ;; Slurps resources/creds.json for OAuth: {"key" "secret" "user" "password"}
 (def creds (read-json (slurp (io/resource "cdb-creds.json"))))
 
+;; Slurps resources/s3.json for Amazon S3: {"access-key" "secret-key"}
+(def s3-creds (read-json (slurp (io/resource "s3-creds.json"))))
+
+(defn s3-source
+  [path]
+  "Return authenticated S3 source for supplied path."
+  (let [key (:access-id s3-creds)
+        secret (:private-key s3-creds)
+        source (str "s3n://" key  ":" secret "@" path)]
+    source))
+
 (defn split-line
   [line]
   "Returns vector of line values by splitting on tab."
   (vec (.split line "\t")))
 
-(defn cdb-update
+(defn cdb-execute
   [sql]
+  "Execute supplied SQL statement on CartoDB."
   (cdb/query sql (:user creds) :oauth creds))
 
 (defn file->cdb
@@ -30,4 +42,4 @@
          [?name]
          (src ?line)
          (split-line ?line :> ?name ?sql)
-         (cdb-update ?sql))))
+         (cdb-execute ?sql))))

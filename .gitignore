@@ -7,3 +7,4 @@ pom.xml
 .lein-plugins
 credentials.json
 cdb-creds.json
+s3-creds.json
