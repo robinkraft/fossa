@@ -305,7 +305,7 @@
 
    Usage:
      (mk-multipoint-update \"Passer\" [1 2 3 3] [4 5 6 6])
-     ;=> \"UPDATE gbif_points SET the_geom_multipoint = 'MULTIPOINT (4 1, 5 2, 6 3)' WHERE name = 'Passer';\""
+     ;=> \"UPDATE gbif_points SET the_geom_multipoint = ST_GeomFromText('MULTIPOINT (4 1, 5 2, 6 3)', 4326) WHERE name = 'Passer';\""
   [sci-name lats lons]
   (-> (parse-for-wkt lats lons)
       (#(mk-update-stmt sci-name "the_geom_multipoint" %))))

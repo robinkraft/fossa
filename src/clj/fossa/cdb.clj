@@ -22,11 +22,6 @@
         source (str "s3n://" key  ":" secret "@" path)]
     source))
 
-(defn split-line
-  [line]
-  "Returns vector of line values by splitting on tab."
-  (vec (.split line "\t")))
-
 (defn cdb-execute
   [sql]
   "Execute supplied SQL statement on CartoDB."
@@ -41,5 +36,5 @@
     (?<- (stdout)
          [?name]
          (src ?line)
-         (split-line ?line :> ?name ?sql)
+         (u/split-line ?line :> ?name ?sql)
          (cdb-execute ?sql))))
