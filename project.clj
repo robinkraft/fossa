@@ -16,4 +16,5 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [cascalog "1.9.0"]
                  [backtype/dfs-datastores "1.1.3"]
-                 [backtype/dfs-datastores-cascading "1.2.0"]])
+                 [backtype/dfs-datastores-cascading "1.2.0"]
+                 [cljts "0.2.0"]])

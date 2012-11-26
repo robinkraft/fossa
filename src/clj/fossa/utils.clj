@@ -1,5 +1,16 @@
 (ns fossa.utils
-  (:require [clojure.string :as clj-str]))
+  (:require [clojure.string :as clj-str])
+  (:use [cljts io geom])
+  (:import [java.io StringWriter StringReader
+            ByteArrayInputStream ByteArrayOutputStream])
+  (:import [com.vividsolutions.jts.io WKBWriter]))
+
+(defn wkb-hex-example
+  []
+  (let [g (line-string [(c 50 20) (c 40 3)])
+       bos (ByteArrayOutputStream.)]
+   (write-wkb g bos)
+   (WKBWriter/toHex (.toByteArray bos))))
 
 (defn split-line
   "Returns vector of line values by splitting on tab."
