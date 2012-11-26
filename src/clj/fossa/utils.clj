@@ -1,5 +1,18 @@
 (ns fossa.utils
-  (:require [clojure.string :as clj-str]))
+  (:require [clojure.string :as clj-str]
+            [cljts.io :as cio]
+            [cljts.geom :as geom])
+  (:import [java.io StringWriter StringReader
+            ByteArrayInputStream ByteArrayOutputStream])
+  (:import [com.vividsolutions.jts.io WKBWriter]))
+
+(defn wkb-hex-example
+  []
+  (let [sr (StringReader. "MULTIPOINT (50 20, 40 3)")
+        geo (cio/read-wkt sr)
+        bos (ByteArrayOutputStream.)]
+    (write-wkb geo bos)
+    (WKBWriter/toHex (.toByteArray bos))))
 
 (defn split-line
   "Returns vector of line values by splitting on tab."
