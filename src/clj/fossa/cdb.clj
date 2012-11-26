@@ -1,5 +1,7 @@
 (ns fossa.cdb
-  "This namespace provides CartoDB support."
+  "This namespace provides support for uploading to CartoDB over the SQL API.
+   It requires that you have configuration files for CartoDB and S3 in the
+   resources directory. Both are downloadable from our fossaconfig bucket on S3."
   (:use [cascalog.api]
         [cartodb.core :as cdb]
         [clojure.data.json :only (read-json)])
@@ -33,8 +35,9 @@
    textlines where the first column is a Scientific name and the second column
    is an SQL UPDATE statement."
   (let [src (hfs-textline path)]
-    (?<- (stdout)
+    (?<- (hfs-textline "/tmp/sink" :sinkmode :replace)
          [?name]
          (src ?line)
          (u/split-line ?line :> ?name ?sql)
-         (cdb-execute ?sql))))
+         (cdb-execute ?sql)
+         (:trap (hfs-textline "/tmp/trap" :sinkmode :replace)))))
