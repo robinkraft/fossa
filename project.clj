@@ -17,4 +17,5 @@
                  [cascalog "1.9.0"]
                  [backtype/dfs-datastores "1.1.3"]
                  [backtype/dfs-datastores-cascading "1.2.0"]
-                 [cartodb-clj "1.5.2"]])
+                 [cartodb-clj "1.5.2"]
+                 [cljts "0.1.0"]])
