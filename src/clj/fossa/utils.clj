@@ -1,5 +1,8 @@
 (ns fossa.utils
-  (:require [clojure.string :as clj-str]))
+  (:require [clojure.string :as clj-str])
+  (:use [cljts.io :only (read-wkt-str write-wkb)])
+  (:import [java.io ByteArrayOutputStream])
+  (:import [com.vividsolutions.jts.io WKBWriter]))
 
 (defn split-line
   "Returns vector of line values by splitting on tab."
@@ -53,7 +56,7 @@
 (defn latlons->wkt-multi-point
   "Returns WKT MULTIPOINT string from supplied lats and lons."
   [lats lons]
-  (let [out-str "ST_GeomFromText('MULTIPOINT (%s)', 4326)"
+  (let [out-str "MULTIPOINT (%s)"
         sep ", "]
     (->> (map vector lats lons)
          (vec)
@@ -299,15 +302,42 @@
   [tuples lats lons sci-name field-name field-num]
   (mk-update-stmt sci-name field-name (prep-vals (extract-field tuples lats lons field-num))))
 
+(defn wkt-str->hex
+  "Convert a well-known text string to a hexidecimal geometry string
+   suitable for use with PostGIS.
+
+   Usage:
+     (wkt-str->hex \"MULTIPOINT (0 0)\")
+     ;=> \"000000000400000001000000000100000000000000000000000000000000\""
+  [s]
+  (let [wkt (read-wkt-str s)
+       bos (ByteArrayOutputStream.)]
+   (write-wkb wkt bos)
+   (WKBWriter/toHex (.toByteArray bos))))
+
+(defn fmt-for-geom-func
+  "Format WKB string for use with ST_AsBinary and ST_GeomFromWKB.
+
+   Usage:
+     (let [hex-str (wkt-str->hex \"MULTIPOINT (0 0)\")]
+       (fmt-for-geom-func hex-str))
+     ;=> \"ST_GeomFromWKB(ST_AsBinary(000000000400000001000000000100000000000000000000000000000000::geometry), 4326)\""
+  [s]
+  (let [srid 4326]
+    (format "ST_GeomFromWKB(ST_AsBinary(%s::geometry), %s)" s srid)))
+
 (defn mk-multipoint-update
   "Return an SQL UDPATE statement for the_geom_multipoint column built from
    supplied Scientific name and coordinates.
 
    Usage:
      (mk-multipoint-update \"Passer\" [1 2 3 3] [4 5 6 6])
-     ;=> \"UPDATE gbif_points SET the_geom_multipoint = ST_GeomFromText('MULTIPOINT (4 1, 5 2, 6 3)', 4326) WHERE name = 'Passer';\""
+     ;=> \"UPDATE gbif_points SET the_geom_multipoint = ST_GeomFromWKB(ST_AsBinary('000000000400000003000000000140100000000000003FF0000000000000000000000140140000000000004000000000000000000000000140180000000000004008000000000000'::geometry), 4326) WHERE name = 'Passer';\""
   [sci-name lats lons]
   (-> (parse-for-wkt lats lons)
+      (wkt-str->hex)
+      (surround-str "'")
+      (fmt-for-geom-func)
       (#(mk-update-stmt sci-name "the_geom_multipoint" %))))
 
 (defn get-parse-fields
