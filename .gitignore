@@ -6,3 +6,5 @@ pom.xml
 .lein-deps-sum
 .lein-plugins
 credentials.json
+cdb-creds.json
+s3-creds.json

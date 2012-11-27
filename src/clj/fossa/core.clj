@@ -93,3 +93,10 @@
       (cleaned-src :>> cleaned-fields)
       (u/get-season ?lats ?months :> ?season)
       (collect-by-latlon :<< collect-fields :> ?update-stmt)))
+
+(comment
+  "Example RPL command for generating UPDATE statements."
+  (let [src (hfs-seqfile (.getPath (io/resource "passer-part-00000")))
+        query (parse-occurrence-data src)
+        sink (hfs-textline "/tmp/sink" :sinkmode :replace)]
+    (?- sink query)))

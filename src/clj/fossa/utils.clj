@@ -53,7 +53,7 @@
 (defn latlons->wkt-multi-point
   "Returns WKT MULTIPOINT string from supplied lats and lons."
   [lats lons]
-  (let [out-str "MULTIPOINT (%s)"
+  (let [out-str "ST_GeomFromText('MULTIPOINT (%s)', 4326)"
         sep ", "]
     (->> (map vector lats lons)
          (vec)
@@ -300,14 +300,14 @@
   (mk-update-stmt sci-name field-name (prep-vals (extract-field tuples lats lons field-num))))
 
 (defn mk-multipoint-update
-  "Generate an UPDATE statement that includes a multipoint geometry.
+  "Return an SQL UDPATE statement for the_geom_multipoint column built from
+   supplied Scientific name and coordinates.
 
    Usage:
      (mk-multipoint-update \"Passer\" [1 2 3 3] [4 5 6 6])
-     ;=> \"UPDATE gbif_points SET the_geom_multipoint = 'MULTIPOINT (4 1, 5 2, 6 3)' WHERE name = 'Passer';\""
+     ;=> \"UPDATE gbif_points SET the_geom_multipoint = ST_GeomFromText('MULTIPOINT (4 1, 5 2, 6 3)', 4326) WHERE name = 'Passer';\""
   [sci-name lats lons]
   (-> (parse-for-wkt lats lons)
-      (surround-str "'")
       (#(mk-update-stmt sci-name "the_geom_multipoint" %))))
 
 (defn get-parse-fields
