@@ -18,4 +18,5 @@
                  [backtype/dfs-datastores "1.1.3"]
                  [backtype/dfs-datastores-cascading "1.2.0"]
                  [cartodb-clj "1.5.2"]
+                 [org.clojure/math.numeric-tower "0.0.1"]
                  [cljts "0.1.0"]])
