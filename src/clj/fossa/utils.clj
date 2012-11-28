@@ -283,12 +283,14 @@
   string.
 
   Usage:
-    (mk-update-stmt \"Ursus\" \"occid\" '{\"999999999,111111111\", \"333333333\"}')
-    ;=> \"UPDATE gbif_points SET months = '{\"7,8\", \"9\"}' WHERE name = 'Ursus';\""
-  [sci-name field-name value-str]
+    (mk-update-stmt \"Ursus\" \"occid\" '{\"999999999,111111111\",
+                                          \"333333333\"}' 1)
+    ;=> \"UPDATE gbif_points SET months = '{\"7,8\", \"9\"}' WHERE
+          name = 'Ursus' AND partition = 1;\""
+  [sci-name field-name value-str partition-num]
   (let [table "gbif_points"
-        s (str "UPDATE %s SET %s = %s WHERE name = '%s';")]
-    (format s table field-name value-str sci-name)))
+        s (str "UPDATE %s SET %s = %s WHERE name = '%s' AND partition = %s;")]
+    (format s table field-name value-str sci-name partition-num)))
 
 (defn data->update-stmt
   "Parses data tuples and returns update statement string.
@@ -297,10 +299,14 @@
      (let [tuples [[\"1.2\" \"4.5\" \"Ursus\" \"2007\" \"2008\"]
                    [\"2.3\" \"5.6\" \"Ursus\" \"2009\" \"2010\"]]]
        (data->update-stmt tuples [\"1.2\" \"4.5\"] [\"3.4\" \"5.6\"]
-                          \"Ursus\" \"years\" 3))
-     ;=> \"UPDATE gbif_points SET years = '{\"2007\", \"2009\"}' WHERE name = 'Ursus';\""
-  [tuples lats lons sci-name field-name field-num]
-  (mk-update-stmt sci-name field-name (prep-vals (extract-field tuples lats lons field-num))))
+                          \"Ursus\" \"years\" 3 1))
+     ;=> \"UPDATE gbif_points SET years = '{\"2007\", \"2009\"}' WHERE
+         name = 'Ursus' AND partition = 1;\""
+  [tuples lats lons sci-name partition-num field-name field-num]
+  (mk-update-stmt sci-name
+                  field-name
+                  (prep-vals (extract-field tuples lats lons field-num))
+                  partition-num))
 
 (defn wkt-str->hex
   "Convert a well-known text string to a hexidecimal geometry string
@@ -333,12 +339,12 @@
    Usage:
      (mk-multipoint-update \"Passer\" [1 2 3 3] [4 5 6 6])
      ;=> \"UPDATE gbif_points SET the_geom_multipoint = ST_GeomFromWKB(ST_AsBinary('000000000400000003000000000140100000000000003FF0000000000000000000000140140000000000004000000000000000000000000140180000000000004008000000000000'::geometry), 4326) WHERE name = 'Passer';\""
-  [sci-name lats lons]
+  [sci-name partition-num lats lons]
   (-> (parse-for-wkt lats lons)
       (wkt-str->hex)
       (surround-str "'")
       (fmt-for-geom-func)
-      (#(mk-update-stmt sci-name "the_geom_multipoint" %))))
+      (#(mk-update-stmt sci-name "the_geom_multipoint" % partition-num))))
 
 (defn get-parse-fields
   "Returns all field name keys from field-map that are not \"?lats\",
