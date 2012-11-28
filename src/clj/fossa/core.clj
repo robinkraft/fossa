@@ -1,5 +1,6 @@
 (ns fossa.core
-  (:use [cascalog.api])
+  (:use [cascalog.api]
+        [clojure.math.numeric-tower :only (ceil)])
   (:require [fossa.utils :as u]
             [cascalog.ops :as c]
             [clojure.java.io :as io]))
@@ -9,6 +10,8 @@
 
 ;; eBird data resource id:
 (def ^:const EBIRD-ID "43")
+
+(def ^:const PARTITION-SIZE 10000)
 
 ;; Ordered column names from the occurrence_20120802.txt.gz dump.
 (def occ-fields ["?occurrenceid" "?taxonid" "?dataresourceid" "?kingdom"
@@ -70,33 +73,46 @@
    are added."
   (u/mk-sorted-map (zipmap collect-fields (range (count collect-fields)))))
 
-(defbufferop collect-by-latlon
+(defn collect-update-stmts
+  [tuples partition-num]
+  (let [sci-name (first (u/extract (field-map "?name") tuples))
+        [lats lons] (u/extract-latlons tuples (map field-map ["?lats" "?lons"]))
+        field-idxs (u/get-field-idxs field-map)
+        clean-field-names (u/drop-q-mark field-map)
+        mk-field-update (partial u/data->update-stmt
+                                 tuples lats lons sci-name partition-num)]
+    (into (map vector
+               (repeat (count field-idxs) partition-num)
+               (map mk-field-update clean-field-names field-idxs))
+          [[partition-num (u/mk-multipoint-update sci-name
+                                                  partition-num
+                                                  lats
+                                                  lons)]])))
+
+(defbufferop [collect-by-latlon [partition-size]]
   "Returns SQL UPDATE statements as strings for each output field
    (e.g. latlon, occurrence ids, precision, year, etc.). Observation
    locations need not be unique - observations at the same location
    are aggregated and ordered according to the order of the incoming
-   latitude and longitude. For more, see tests and documentation for
-   `u/data->update-stmt`."
-   [tuples]
-  (let [sci-name (first (u/extract (field-map "?name") tuples))
-        [lats lons] (u/extract-latlons tuples (map field-map ["?lats" "?lons"]))
-        tuple-parser (partial u/data->update-stmt tuples lats lons sci-name)
-        field-idxs (u/get-field-idxs field-map)
-        clean-field-names (u/drop-q-mark field-map)]
-    (into [(u/mk-multipoint-update sci-name lats lons)]
-          (map tuple-parser clean-field-names field-idxs))))
+   latitude and longitude."
+  [tuples]
+  (let [partition-idxs (range (ceil (/ (count tuples) partition-size)))]
+    (apply concat (map collect-update-stmts
+                       (partition-all partition-size partition-size tuples)
+                       partition-idxs))))
 
 (defn parse-occurrence-data
   "Shred some GBIF."
-  [cleaned-src]
-  (<- [?name ?update-stmt]
+  [cleaned-src & {:keys [partition-size] :or {partition-size PARTITION-SIZE}}]
+  (<- [?name ?partition ?update-stmt]
       (cleaned-src :>> cleaned-fields)
       (u/get-season ?lats ?months :> ?season)
-      (collect-by-latlon :<< collect-fields :> ?update-stmt)))
+      (collect-by-latlon [partition-size] :<< collect-fields :>
+                         ?partition ?update-stmt)))
 
 (comment
   "Example RPL command for generating UPDATE statements."
   (let [src (hfs-seqfile (.getPath (io/resource "passer-part-00000")))
-        query (parse-occurrence-data src)
+        query (parse-occurrence-data src 5)
         sink (hfs-textline "/tmp/sink" :sinkmode :replace)]
     (?- sink query)))
