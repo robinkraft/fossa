@@ -68,7 +68,7 @@
    is an SQL UPDATE statement."
   (let [src (hfs-textline path)]
     (?<- (hfs-textline "/tmp/sink" :sinkmode :replace)
-         [?name]
+         [?name ?partition ?response]
          (src ?line)
          (u/split-line ?line :> ?name ?partition ?sql)
-         (cdb-execute ?sql))))
+         (cdb-execute ?sql :> ?response))))

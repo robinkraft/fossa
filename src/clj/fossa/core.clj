@@ -115,4 +115,9 @@
   (let [src (hfs-seqfile (.getPath (io/resource "passer-part-00000")))
         query (parse-occurrence-data src :partition-size 5)
         sink (hfs-textline "/tmp/sink" :sinkmode :replace)]
+    (?- sink query))
+
+  (let [src (hfs-seqfile (fossa.cdb/s3-source "gbifsource/read-occs/passer"))
+        query (parse-occurrence-data src)
+        sink (hfs-textline "/mnt/hgfs/Data/mol/fossa/sql/passer" :sinkmode :replace)]
     (?- sink query)))
